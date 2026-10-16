@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from core.database import vehiculos_collection
 from schemas.vehiculo import VehiculoCreate, VehiculoResponse
-from utils.mongo import formatear_vehiculo
+from utils.mongo import formatear_vehiculo, validar_object_id
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
 
@@ -41,3 +41,21 @@ def registrar_vehiculo(vehiculo_in: VehiculoCreate):
 def listar_vehiculos():
     cursor = vehiculos_collection.find()
     return [formatear_vehiculo(doc) for doc in cursor]
+
+
+@router.get(
+    "/{id}",
+    response_model=VehiculoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Consultar un vehículo por identificador",
+    description="Busca y obtiene la información detallada de un vehículo a partir de su ID de MongoDB.",
+)
+def consultar_vehiculo_por_id(id: str):
+    obj_id = validar_object_id(id)
+    vehiculo = vehiculos_collection.find_one({"_id": obj_id})
+    if not vehiculo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehículo con ID '{id}' no encontrado."
+        )
+    return formatear_vehiculo(vehiculo)
