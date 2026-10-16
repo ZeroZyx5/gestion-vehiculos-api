@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pymongo import ReturnDocument
 from core.database import vehiculos_collection
 from schemas.vehiculo import VehiculoCreate, VehiculoResponse, VehiculoUpdate
@@ -42,6 +42,26 @@ def registrar_vehiculo(vehiculo_in: VehiculoCreate):
 def listar_vehiculos():
     cursor = vehiculos_collection.find()
     return [formatear_vehiculo(doc) for doc in cursor]
+
+
+@router.get(
+    "/buscar/placa",
+    response_model=VehiculoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Buscar vehículo por placa",
+    description="Busca un vehículo específico mediante su número de placa (búsqueda insensible a mayúsculas/minúsculas).",
+)
+def buscar_por_placa(placa: str = Query(..., min_length=1, description="Placa del vehículo a buscar")):
+    placa_limpia = placa.strip()
+    vehiculo = vehiculos_collection.find_one({
+        "placa": {"$regex": f"^{placa_limpia}$", "$options": "i"}
+    })
+    if not vehiculo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No se encontró ningún vehículo con la placa '{placa}'."
+        )
+    return formatear_vehiculo(vehiculo)
 
 
 @router.get(
