@@ -80,6 +80,21 @@ def filtrar_por_marca(marca: str = Query(..., min_length=1, description="Marca d
 
 
 @router.get(
+    "/filtrar/tipo",
+    response_model=list[VehiculoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Filtrar vehículos por tipo",
+    description="Retorna la lista de vehículos que coincidan con el tipo especificado (ej: Sedán, SUV, Camioneta).",
+)
+def filtrar_por_tipo(tipo: str = Query(..., min_length=1, description="Tipo de vehículo a filtrar")):
+    tipo_limpio = tipo.strip()
+    cursor = vehiculos_collection.find({
+        "tipo": {"$regex": f"^{tipo_limpio}$", "$options": "i"}
+    })
+    return [formatear_vehiculo(doc) for doc in cursor]
+
+
+@router.get(
     "/{id}",
     response_model=VehiculoResponse,
     status_code=status.HTTP_200_OK,
