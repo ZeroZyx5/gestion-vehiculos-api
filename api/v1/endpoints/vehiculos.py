@@ -65,6 +65,21 @@ def buscar_por_placa(placa: str = Query(..., min_length=1, description="Placa de
 
 
 @router.get(
+    "/filtrar/marca",
+    response_model=list[VehiculoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Filtrar vehículos por marca",
+    description="Retorna la lista de vehículos que coincidan con la marca especificada.",
+)
+def filtrar_por_marca(marca: str = Query(..., min_length=1, description="Marca del vehículo a filtrar")):
+    marca_limpia = marca.strip()
+    cursor = vehiculos_collection.find({
+        "marca": {"$regex": f"^{marca_limpia}$", "$options": "i"}
+    })
+    return [formatear_vehiculo(doc) for doc in cursor]
+
+
+@router.get(
     "/{id}",
     response_model=VehiculoResponse,
     status_code=status.HTTP_200_OK,
