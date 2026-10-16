@@ -95,6 +95,18 @@ def filtrar_por_tipo(tipo: str = Query(..., min_length=1, description="Tipo de v
 
 
 @router.get(
+    "/filtrar/anio",
+    response_model=list[VehiculoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Filtrar vehículos por año",
+    description="Retorna la lista de vehículos correspondientes al año de fabricación especificado.",
+)
+def filtrar_por_anio(anio: int = Query(..., ge=1886, le=2100, description="Año de fabricación a filtrar")):
+    cursor = vehiculos_collection.find({"anio": anio})
+    return [formatear_vehiculo(doc) for doc in cursor]
+
+
+@router.get(
     "/{id}",
     response_model=VehiculoResponse,
     status_code=status.HTTP_200_OK,
