@@ -29,3 +29,15 @@ def registrar_vehiculo(vehiculo_in: VehiculoCreate):
     datos["_id"] = resultado.inserted_id
 
     return formatear_vehiculo(datos)
+
+
+@router.get(
+    "",
+    response_model=list[VehiculoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Listar todos los vehículos",
+    description="Obtiene la lista completa de todos los vehículos registrados.",
+)
+def listar_vehiculos():
+    cursor = vehiculos_collection.find()
+    return [formatear_vehiculo(doc) for doc in cursor]
