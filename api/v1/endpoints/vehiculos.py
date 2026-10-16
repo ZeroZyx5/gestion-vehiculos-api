@@ -105,3 +105,23 @@ def modificar_vehiculo(id: str, vehiculo_in: VehiculoUpdate):
     )
 
     return formatear_vehiculo(vehiculo_actualizado)
+
+
+@router.delete(
+    "/{id}",
+    status_code=status.HTTP_200_OK,
+    summary="Eliminar un vehículo",
+    description="Elimina de forma permanente un vehículo mediante su identificador.",
+)
+def eliminar_vehiculo(id: str):
+    obj_id = validar_object_id(id)
+    resultado = vehiculos_collection.delete_one({"_id": obj_id})
+    if resultado.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehículo con ID '{id}' no encontrado."
+        )
+    return {
+        "mensaje": "Vehículo eliminado exitosamente",
+        "id": id
+    }
