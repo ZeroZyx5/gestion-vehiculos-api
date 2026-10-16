@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, status
 from pymongo import ReturnDocument
 from core.database import vehiculos_collection
-from schemas.vehiculo import VehiculoCreate, VehiculoResponse, VehiculoUpdate
+from schemas.vehiculo import Mantenimiento, VehiculoCreate, VehiculoResponse, VehiculoUpdate
 from utils.mongo import formatear_vehiculo, validar_object_id
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
@@ -187,3 +187,44 @@ def eliminar_vehiculo(id: str):
         "mensaje": "Vehículo eliminado exitosamente",
         "id": id
     }
+
+
+@router.get(
+    "/{id}/mantenimientos",
+    response_model=list[Mantenimiento],
+    status_code=status.HTTP_200_OK,
+    summary="Consultar el historial de mantenimiento de un vehículo",
+    description="Obtiene la lista completa de mantenimientos registrados para un vehículo a partir de su ID.",
+)
+def consultar_mantenimientos(id: str):
+    obj_id = validar_object_id(id)
+    vehiculo = vehiculos_collection.find_one({"_id": obj_id}, {"mantenimientos": 1})
+    if not vehiculo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehículo con ID '{id}' no encontrado."
+        )
+    return vehiculo.get("mantenimientos", [])
+
+
+@router.post(
+    "/{id}/mantenimientos",
+    response_model=list[Mantenimiento],
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar un mantenimiento para un vehículo",
+    description="Agrega un nuevo registro de mantenimiento al historial del vehículo especificado.",
+)
+def registrar_mantenimiento(id: str, mantenimiento: Mantenimiento):
+    obj_id = validar_object_id(id)
+    mantenimiento_dict = mantenimiento.model_dump(mode="json")
+    resultado = vehiculos_collection.find_one_and_update(
+        {"_id": obj_id},
+        {"$push": {"mantenimientos": mantenimiento_dict}},
+        return_document=ReturnDocument.AFTER
+    )
+    if not resultado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehículo con ID '{id}' no encontrado."
+        )
+    return resultado.get("mantenimientos", [])
