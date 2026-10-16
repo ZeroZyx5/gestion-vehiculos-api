@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
+from pymongo import ReturnDocument
 from core.database import vehiculos_collection
-from schemas.vehiculo import VehiculoCreate, VehiculoResponse
+from schemas.vehiculo import VehiculoCreate, VehiculoResponse, VehiculoUpdate
 from utils.mongo import formatear_vehiculo, validar_object_id
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
@@ -59,3 +60,48 @@ def consultar_vehiculo_por_id(id: str):
             detail=f"Vehículo con ID '{id}' no encontrado."
         )
     return formatear_vehiculo(vehiculo)
+
+
+@router.put(
+    "/{id}",
+    response_model=VehiculoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Modificar la información de un vehículo",
+    description="Actualiza los datos de un vehículo existente mediante su identificador.",
+)
+def modificar_vehiculo(id: str, vehiculo_in: VehiculoUpdate):
+    obj_id = validar_object_id(id)
+
+    vehiculo_existente = vehiculos_collection.find_one({"_id": obj_id})
+    if not vehiculo_existente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehículo con ID '{id}' no encontrado."
+        )
+
+    datos_actualizar = vehiculo_in.model_dump(exclude_unset=True, mode="json")
+
+    # Si se actualiza la placa, verificar que no esté duplicada en otro registro
+    if "placa" in datos_actualizar:
+        nueva_placa = datos_actualizar["placa"].strip().upper()
+        duplicado = vehiculos_collection.find_one({
+            "_id": {"$ne": obj_id},
+            "placa": {"$regex": f"^{nueva_placa}$", "$options": "i"}
+        })
+        if duplicado:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ya existe otro vehículo registrado con la placa '{datos_actualizar['placa']}'."
+            )
+        datos_actualizar["placa"] = nueva_placa
+
+    if not datos_actualizar:
+        return formatear_vehiculo(vehiculo_existente)
+
+    vehiculo_actualizado = vehiculos_collection.find_one_and_update(
+        {"_id": obj_id},
+        {"$set": datos_actualizar},
+        return_document=ReturnDocument.AFTER
+    )
+
+    return formatear_vehiculo(vehiculo_actualizado)
